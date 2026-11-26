@@ -1,0 +1,68 @@
+[project]
+name = "pdf2epub"
+version = "0.2.0"
+description = "Convert PDF files to EPUB via Markdown using marker-pdf (GPU accelerated)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "marker-pdf==1.10.2",
+    # marker imports six without declaring it as a dependency
+    "six==1.17.0",
+    "transformers==4.57.6",
+    "markdown==3.10.2",
+    "latex2mathml==3.81.0",
+    # imported directly by pdf2epub.html (also a marker dependency)
+    "regex",
+    # marker-pdf constrains Pillow<11.0.0
+    "pillow<11.0.0",
+]
+
+[project.optional-dependencies]
+# Pick the PyTorch build explicitly: `uv sync --extra cu132` (NVIDIA GPU) or
+# `uv sync --extra cpu` (no GPU, e.g. the Docker image). Without either, torch
+# comes from PyPI.
+cpu = ["torch==2.15.0"]
+cu132 = ["torch==2.15.0"]
+
+[project.scripts]
+pdf2epub = "pdf2epub.cli:main"
+
+[dependency-groups]
+# Unit tests and lint need neither marker nor torch: `uv sync --only-group dev`.
+dev = [
+    "pytest>=8",
+    "ruff",
+    "markdown==3.10.2",
+    "latex2mathml==3.81.0",
+    "regex",
+    "pillow<11.0.0",
+]
+bench = [
+    "psutil",
+    "nvidia-ml-py",
+]
+
+[tool.uv]
+default-groups = ["dev", "bench"]
+conflicts = [[{ extra = "cpu" }, { extra = "cu132" }]]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu132", extra = "cu132" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"

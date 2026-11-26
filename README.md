@@ -16,7 +16,7 @@ Convert PDF files to nicely structured Markdown and EPUB format with intelligent
 
 ## 🛠️ Dependencies
 
-- Python 3.10–3.14 (3.13 recommended, see below)
+- Python 3.11–3.14 (3.13 recommended, see below; torch 2.15 has no 3.10 wheels)
 - PyTorch (with CUDA/ROCm support for GPU acceleration)
 - marker-pdf==1.10.2
 - transformers==4.57.6
@@ -28,7 +28,7 @@ Convert PDF files to nicely structured Markdown and EPUB format with intelligent
 Python 3.13 is recommended.
 
 `marker-pdf` constrains `Pillow<11.0.0`, and Pillow only ships Python 3.14
-wheels from 11.3.0 onward. On Python 3.10–3.13 every dependency installs as a
+wheels from 11.3.0 onward. On Python 3.11–3.13 every dependency installs as a
 prebuilt wheel. On 3.14, pip has to build Pillow from source instead: this
 works, but it is slower and requires a working C toolchain plus the image
 library headers Pillow links against. On Debian/Ubuntu install them first:
@@ -41,6 +41,23 @@ Without these headers the install fails with
 `RequiredDependencyException: The headers or library files could not be found for jpeg`.
 
 ## 💻 Installation
+
+### With uv (recommended)
+
+[uv](https://docs.astral.sh/uv/) installs the exact versions pinned in
+`uv.lock` (and the Python version in `.python-version`):
+
+```bash
+uv sync --extra cu132   # NVIDIA GPU (CUDA 13.2 PyTorch build)
+uv sync --extra cpu     # CPU only, no CUDA libraries
+uv run pdf2epub --help
+```
+
+`uv sync --only-group dev` installs just the test and lint tools.
+
+### With pip
+
+`requirements.txt` is exported from `uv.lock`, so pip gets the same versions.
 
 1. Create and activate a virtual environment.
 
@@ -84,10 +101,10 @@ print(torch.version.hip)  # Should print ROCm version for AMD
 
 ### 🐳 Docker
 
-A CPU-only image can be built from the included `Dockerfile`:
+A CPU-only image (PyTorch CPU build, no CUDA libraries) can be built from `docker/Dockerfile`, from the repository root:
 
 ```bash
-docker build -t pdf2epub .
+docker build -f docker/Dockerfile -t pdf2epub .
 ```
 
 Run it with your PDFs mounted at `/data` and a model cache volume (marker-pdf
@@ -112,12 +129,12 @@ Tagged releases are also published to
 
 Convert a single PDF file:
 ```bash
-python main.py input.pdf
+uv run pdf2epub input.pdf
 ```
 
 Convert all PDFs in a directory:
 ```bash
-python main.py input_directory/
+uv run pdf2epub input_directory/
 ```
 
 EPUB generation prompts interactively for metadata (title, author, language,
@@ -128,7 +145,7 @@ produce only markdown without any prompts.
 ### Advanced Options
 
 ```bash
-python main.py [input_path] [output_path] [options]
+uv run pdf2epub [input_path] [output_path] [options]
 
 Options:
   --max-pages INT          Maximum number of pages to process
@@ -143,12 +160,12 @@ If `input_path` is omitted, all PDFs in `./input/` are processed.
 
 Process a specific range of pages:
 ```bash
-python main.py book.pdf --start-page 10 --max-pages 50
+uv run pdf2epub book.pdf --start-page 10 --max-pages 50
 ```
 
 Convert to markdown only:
 ```bash
-python main.py thesis.pdf --skip-epub
+uv run pdf2epub thesis.pdf --skip-epub
 ```
 
 ### Output Structure
