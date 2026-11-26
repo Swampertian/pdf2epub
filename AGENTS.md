@@ -47,7 +47,8 @@ for machines without a supported GPU.
 
 - Agents work in isolated git worktrees, never directly in the main checkout.
   Worktrees live in `.worktree/<task-name>/` at the repository root (ignored
-  by git), one per task, on branch `agent/<task-name>`.
+  by git), one per task, on a branch with the same name (for example
+  `refact/uv-migration` or `fix/remove-message`).
 - Create one with `scripts/worktree.sh <task-name> [base-ref]` and remove it
   with `scripts/worktree.sh --remove <task-name> [--force]` once the work is merged or
   dropped. Use `--from-working-tree` instead of a base ref to start from the

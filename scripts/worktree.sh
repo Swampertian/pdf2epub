@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Create an isolated git worktree for an agent task under .worktree/<name>.
 #
-#   scripts/worktree.sh <name> [base-ref]   create .worktree/<name> on branch agent/<name>
+#   scripts/worktree.sh <name> [base-ref]   create .worktree/<name> on branch <name>
+#                                           (e.g. refact/uv-migration, fix/remove-message)
 #   scripts/worktree.sh <name> --from-working-tree
 #                                           same, then copy the main checkout's uncommitted
 #                                           state (modified, deleted, untracked) into it
@@ -26,7 +27,7 @@ cd "$root"
 SHARED=(books bench/out)
 
 usage() {
-    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
 }
 
@@ -36,13 +37,19 @@ if [[ "$1" == "--remove" ]]; then
     [[ $# -eq 2 || ( $# -eq 3 && "$3" == "--force" ) ]] || usage
     force=()
     [[ "${3:-}" == "--force" ]] && force=(--force)
+    branch="$(git -C ".worktree/$2" branch --show-current 2>/dev/null || true)"
     # Drop links into the main checkout first; git sees them as untracked files.
     find ".worktree/$2" -type l -lname "$root/*" -delete
     if ! git worktree remove "${force[@]}" ".worktree/$2"; then
         echo "Not removed. Review or commit its changes, or pass --force to discard them." >&2
         exit 1
     fi
-    echo "Removed .worktree/$2 (branch agent/$2 kept; delete it with: git branch -d agent/$2)"
+    # Names with "/" create nested directories; drop the ones left empty.
+    dir="$(dirname ".worktree/$2")"
+    while [[ "$dir" != ".worktree" && "$dir" != "." ]] && rmdir "$dir" 2>/dev/null; do
+        dir="$(dirname "$dir")"
+    done
+    echo "Removed .worktree/$2 (branch ${branch:-?} kept; delete it with: git branch -d ${branch:-<branch>})"
     exit 0
 fi
 
@@ -53,9 +60,11 @@ if [[ "$base" == "--from-working-tree" ]]; then
     copy_working_tree=true
     base=HEAD
 fi
-[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid name: $name" >&2; exit 1; }
+if [[ ! "$name" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ || "$name" == *..* ]]; then
+    echo "Invalid name: $name" >&2; exit 1
+fi
 path=".worktree/$name"
-branch="agent/$name"
+branch="$name"
 
 if ! $copy_working_tree && [[ -n "$(git status --porcelain --untracked-files=no)" && "$base" == "HEAD" ]]; then
     echo "Warning: the main checkout has uncommitted changes; they are NOT in the new worktree." >&2
