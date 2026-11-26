@@ -15,6 +15,7 @@ utilisation (sampled every --interval seconds).
 
 Usage:
   python bench/benchmark.py book.pdf --pages 20 --json results.json
+  # Writes bench/out/book/results.json (or <output-dir>/results.json with --out).
 """
 import argparse
 import json
@@ -131,9 +132,12 @@ def main():
     ap.add_argument("--pages", type=int, default=None, help="number of pages (default: all)")
     ap.add_argument("--start", type=int, default=0, help="first page index")
     ap.add_argument("--out", type=Path, default=None, help="output dir (default: bench/out/<stem>)")
-    ap.add_argument("--json", type=Path, default=None, help="write results to this JSON file")
+    ap.add_argument("--json", type=Path, metavar="FILENAME",
+                    help="write results to this filename inside the output directory")
     ap.add_argument("--interval", type=float, default=0.2, help="sampling interval in seconds")
     args = ap.parse_args()
+    if args.json is not None and (args.json.parent != Path(".") or args.json.name in ("", "..")):
+        ap.error("--json expects a filename; use --out to change the output directory")
 
     out = args.out or Path(__file__).parent / "out" / args.pdf.stem
     out.mkdir(parents=True, exist_ok=True)
@@ -184,10 +188,11 @@ def main():
         },
     }
     print(f"\nconvert: {result['pages_per_s']} pages/s  ({result['s_per_page']} s/page)")
-    
+
     if args.json:
-        out.write_text(json.dumps(result, indent=2))
-        print(f"results: {args.json}")
+        json_path = out / args.json
+        json_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        print(f"results: {json_path}")
 
 
 if __name__ == "__main__":
