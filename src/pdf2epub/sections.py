@@ -11,6 +11,7 @@ SPLIT_LEVELS = ("auto", "1", "2", "3", "4", "5", "6", "none")
 _HEADING = re.compile(r"h([1-6])\Z")
 _SPACED = re.compile(r"(?<!\w)[^\W\d_](?:\s+[^\W\d_]){2,}(?!\w)")
 _KIND = re.compile(r"^(introdu[çc][ãa]o|introduction|parte|part|cap[íi]tulo|chapter)\b", re.I)
+_ROMAN = re.compile(r"M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
 _VOID = re.compile(
     r'<(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)'
     r'''(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>''', re.I,
@@ -26,7 +27,7 @@ def normalize_label(text: str) -> str:
         if not letters.isupper():
             return match[0]
         part = re.fullmatch(r"(PARTE|PART)([IVXLCDM]+)(.*)", letters)
-        if part:
+        if part and _ROMAN.fullmatch(part[2]):
             return " ".join(piece for piece in part.groups() if piece)
         return letters
 
@@ -94,13 +95,19 @@ def _is_quote(title: str) -> bool:
 
 def _headings(body: minidom.Element) -> dict[int, Heading]:
     ids = {node.getAttribute("id") for node in body.getElementsByTagName("*") if node.hasAttribute("id")}
-    seen = set()
+    candidates = [
+        (index, node, int(match[1]), title)
+        for index, node in enumerate(body.childNodes)
+        if (match := _HEADING.fullmatch(node.nodeName)) and (title := normalize_label(_text(node)))
+    ]
+    heading_nodes = {node for _, node, _, _ in candidates}
+    seen = {
+        node.getAttribute("id")
+        for node in body.getElementsByTagName("*")
+        if node not in heading_nodes and node.hasAttribute("id")
+    }
     headings = {}
-    for index, node in enumerate(body.childNodes):
-        match = _HEADING.fullmatch(node.nodeName)
-        title = normalize_label(_text(node)) if match else ""
-        if not title:
-            continue
+    for index, node, level, title in candidates:
         anchor = node.getAttribute("id")
         if not anchor or anchor in seen:
             anchor = unique_name(f"h-{slug(title)}", ids)
@@ -108,7 +115,7 @@ def _headings(body: minidom.Element) -> dict[int, Heading]:
             ids.add(anchor)
         seen.add(anchor)
         if not _is_quote(title):
-            headings[index] = Heading(title, int(match[1]), anchor)
+            headings[index] = Heading(title, level, anchor)
     return headings
 
 
