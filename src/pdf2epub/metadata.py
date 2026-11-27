@@ -15,8 +15,7 @@ DEFAULT_CSS = "style.css"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_TITLE = "Untitled Document"
 
-# Titles PDF producers fill in on their own: placeholders and file names
-# ("Untitled-1", "Microsoft Word - report.docx", "scan0001.pdf").
+
 _PLACEHOLDER_TITLE = re.compile(r"^(untitled|unknown|no title)\b|\.[a-z0-9]{2,4}$", re.IGNORECASE)
 _PDF_DATE = re.compile(r"^(?:D:)?(\d{4})(\d{2})(\d{2})")
 
