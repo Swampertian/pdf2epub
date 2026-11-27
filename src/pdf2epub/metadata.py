@@ -3,6 +3,7 @@ Book description: Dublin Core metadata, stylesheets, chapter list and cover.
 
 Serialised as description.json in the workspace (same format as upstream).
 """
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -12,29 +13,46 @@ from . import workspace
 
 DEFAULT_CSS = "style.css"
 DEFAULT_LANGUAGE = "en"
+DEFAULT_TITLE = "Untitled Document"
+
+# Titles PDF producers fill in on their own: placeholders and file names
+# ("Untitled-1", "Microsoft Word - report.docx", "scan0001.pdf").
+_PLACEHOLDER_TITLE = re.compile(r"^(untitled|unknown|no title)\b|\.[a-z0-9]{2,4}$", re.IGNORECASE)
+_PDF_DATE = re.compile(r"^(?:D:)?(\d{4})(\d{2})(\d{2})")
 
 
-@dataclass(frozen=True)
-class MetadataField:
-    key: str
-    label: str
-    default: str
+def default_metadata(now: datetime, title: str = DEFAULT_TITLE) -> dict[str, str]:
+    """Dublin Core fields used when neither description.json nor the PDF has a value."""
+    return {
+        "dc:title": title,
+        "dc:creator": "Unknown Author",
+        "dc:identifier": f"id-{now.strftime('%Y%m%d%H%M%S')}",
+        "dc:language": DEFAULT_LANGUAGE,
+        "dc:rights": "All rights reserved",
+        "dc:publisher": "PDF2EPUB",
+        "dc:date": now.strftime("%Y-%m-%d"),
+    }
 
 
-def metadata_fields(existing: dict[str, str], now: datetime) -> list[MetadataField]:
-    """Editable Dublin Core fields with defaults taken from existing values."""
-    def field_(key, label, fallback):
-        return MetadataField(key, label, existing.get(key, fallback))
+def _pdf_date(value: str) -> Optional[str]:
+    """PDF date string (D:YYYYMMDDHHmmSS...) as YYYY-MM-DD, or None."""
+    match = _PDF_DATE.match(value.strip())
+    return "-".join(match.groups()) if match else None
 
-    return [
-        field_("dc:title", "Title", "Untitled Document"),
-        field_("dc:creator", "Author(s)", "Unknown Author"),
-        field_("dc:identifier", "Unique Identifier", f"id-{now.strftime('%Y%m%d%H%M%S')}"),
-        field_("dc:language", "Language (e.g., en, de, fr)", DEFAULT_LANGUAGE),
-        field_("dc:rights", "Rights", "All rights reserved"),
-        field_("dc:publisher", "Publisher", "PDF2EPUB"),
-        field_("dc:date", "Publication Date (YYYY-MM-DD)", now.strftime("%Y-%m-%d")),
-    ]
+
+def metadata_from_pdf_info(info: dict[str, str]) -> dict[str, str]:
+    """Dublin Core fields from a PDF's document information dictionary."""
+    title = info.get("Title", "").strip()
+    author = info.get("Author", "").strip()
+    date = _pdf_date(info.get("CreationDate", ""))
+    metadata = {}
+    if title and not _PLACEHOLDER_TITLE.search(title):
+        metadata["dc:title"] = title
+    if author:
+        metadata["dc:creator"] = author
+    if date:
+        metadata["dc:date"] = date
+    return metadata
 
 
 @dataclass(frozen=True)
@@ -115,9 +133,19 @@ class BookDescription:
         workspace.save_description_json(work_dir, self.to_dict())
 
     @classmethod
-    def for_workspace(cls, work_dir: Path, now: Optional[datetime] = None) -> "BookDescription":
-        """Non-interactive description: saved values, defaults for the rest."""
+    def for_workspace(cls, work_dir: Path, now: Optional[datetime] = None,
+                      pdf_metadata: Optional[dict[str, str]] = None,
+                      fallback_title: str = DEFAULT_TITLE) -> "BookDescription":
+        """
+        Description for a workspace, without asking anything.
+
+        Each field comes from description.json if saved there, else from the
+        PDF's own metadata, else a default (the title falls back to fallback_title).
+        """
         description = cls.load(work_dir)
-        fields = metadata_fields(description.metadata, now or datetime.now())
-        description.metadata = {f.key: f.default for f in fields}
+        description.metadata = {
+            **default_metadata(now or datetime.now(), fallback_title),
+            **(pdf_metadata or {}),
+            **description.metadata,
+        }
         return description.with_chapters_from(workspace.markdown_files(work_dir))

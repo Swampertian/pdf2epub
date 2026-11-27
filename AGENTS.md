@@ -11,8 +11,8 @@ for machines without a supported GPU.
 ## Repository layout
 
 - `src/` — Application code. `src/pdf2epub/` is the conversion library
-  (extraction, workspace I/O, metadata, HTML, images, EPUB); `cli.py` and
-  `prompts.py` are the only interactive layer. `src/main.py` is the entry point.
+  (extraction, workspace I/O, metadata, HTML, images, EPUB); `cli.py` is the
+  command-line layer; nothing prompts for input. `src/main.py` is the entry point.
 - `tests/` — Unit tests (pytest). They must not require marker-pdf, torch or
   model downloads; they run with only the `dev` dependency group.
 - `bench/` — Performance tooling. `bench/benchmark.py` measures five phases
@@ -84,7 +84,7 @@ for machines without a supported GPU.
   CLI starts in the active environment.
 - For a targeted conversion check, use a small local sample:
   `python src/main.py books/sample.pdf output/ --max-pages 2 --skip-epub`.
-  `--skip-epub` avoids interactive metadata prompts but does not test EPUB
-  generation; check an EPUB separately when changing that stage.
+  `--skip-epub` skips the EPUB stage; check an EPUB separately when changing
+  that stage.
 - For performance comparisons, use the same PDF, page range, hardware, and
   model cache state. Compare the affected phase, not just the total runtime.

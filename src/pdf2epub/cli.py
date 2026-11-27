@@ -1,12 +1,12 @@
-"""Command-line interface: argument parsing, prompts and the PDF queue."""
+"""Command-line interface: argument parsing and the PDF queue."""
 import argparse
 import logging
 import sys
 from pathlib import Path
 from typing import Optional
 
-from . import epub, extraction, prompts, sections, workspace
-from .metadata import BookDescription
+from . import epub, extraction, sections, workspace
+from .metadata import BookDescription, metadata_from_pdf_info
 
 log = logging.getLogger("pdf2epub")
 
@@ -51,26 +51,21 @@ def convert_to_markdown(pdf_path: Path, work_dir: Path, models: dict, args: argp
     print(f"Markdown saved to: {md_path}")
 
 
-def convert_to_epub_interactive(work_dir: Path, split_level: str = "auto") -> Optional[Path]:
-    """Prompt for metadata and review, then build. Returns None if aborted."""
+def convert_to_epub(pdf_path: Path, work_dir: Path, split_level: str = "auto") -> Path:
+    """Build the EPUB; metadata comes from description.json, then the PDF itself."""
     if not workspace.markdown_files(work_dir):
         raise ValueError(f"No markdown files found in: {work_dir}")
-    description = prompts.ask_metadata(BookDescription.load(work_dir))
-    description = description.with_chapters_from(workspace.markdown_files(work_dir))
+    description = BookDescription.for_workspace(
+        work_dir,
+        pdf_metadata=metadata_from_pdf_info(extraction.read_pdf_info(pdf_path)),
+        fallback_title=pdf_path.stem,
+    )
     description.save(work_dir)
-
-    reviewed = {}
-    for chapter in description.unique_chapters():
-        content = prompts.review_markdown(work_dir / chapter.markdown)
-        if content is None:
-            print("\nConversion aborted by user.")
-            return None
-        reviewed[chapter.markdown] = content
-
-    print("Converting Markdown to EPUB...")
-    output = epub.build_epub(work_dir, epub.default_epub_path(work_dir), description, reviewed,
+    print(f"Converting Markdown to EPUB: {description.title} ({description.authors})")
+    output = epub.build_epub(work_dir, epub.default_epub_path(work_dir), description,
                              split_level=split_level)
-    print(f"\nEPUB creation complete: {output}")
+    print(f"EPUB creation complete: {output}")
+    print(f"To change metadata, edit {work_dir / 'description.json'} and rerun with --skip-md.")
     return output
 
 
@@ -83,7 +78,7 @@ def process_pdf(pdf_path: Path, args: argparse.Namespace, models: Optional[dict]
     else:
         convert_to_markdown(pdf_path, work_dir, models, args)
     if not args.skip_epub:
-        convert_to_epub_interactive(work_dir, args.split_level)
+        convert_to_epub(pdf_path, work_dir, args.split_level)
 
 
 def main(argv: Optional[list[str]] = None) -> int:

@@ -111,14 +111,13 @@ Run it with your PDFs mounted at `/data` and a model cache volume (marker-pdf
 downloads its models on first run):
 
 ```bash
-docker run -it --rm \
+docker run --rm \
   -v "$(pwd)":/data \
   -v pdf2epub-models:/models \
   pdf2epub input.pdf
 ```
 
-`-it` is required for EPUB generation because metadata is prompted
-interactively; with `--skip-epub` it can run non-interactively.
+The conversion asks nothing, so it runs without a terminal.
 
 Tagged releases are also published to
 `ghcr.io/overcuriousity/pdf2epub` by the Docker workflow.
@@ -137,10 +136,12 @@ Convert all PDFs in a directory:
 uv run pdf2epub input_directory/
 ```
 
-EPUB generation prompts interactively for metadata (title, author, language,
-and so on; press Enter to accept each default). It therefore needs a terminal —
-run it non-interactively and it will fail with `EOFError`. Use `--skip-epub` to
-produce only markdown without any prompts.
+The conversion is non-interactive. EPUB metadata is filled from the PDF's own
+document information (title, author, creation date); a missing or placeholder
+title falls back to the PDF file name. The values are saved to
+`description.json` in the output directory. To change them, or to fix the
+markdown before packaging, edit those files and rerun with `--skip-md`:
+saved values take precedence over the PDF's.
 
 ### Advanced Options
 

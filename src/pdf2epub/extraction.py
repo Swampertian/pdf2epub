@@ -48,6 +48,17 @@ def page_range(start_page: Optional[int], max_pages: Optional[int]) -> Optional[
     return list(range(start, start + max_pages))
 
 
+def read_pdf_info(pdf_path: Path) -> dict[str, str]:
+    """The PDF's document information dictionary (Title, Author, CreationDate...)."""
+    import pypdfium2
+
+    pdf = pypdfium2.PdfDocument(str(pdf_path))
+    try:
+        return pdf.get_metadata_dict(skip_empty=True)
+    finally:
+        pdf.close()
+
+
 def extract_pdf(pdf_path: Path, models: dict, pages: Optional[list[int]] = None) -> Extraction:
     """Run marker on one PDF and return markdown, images and metadata."""
     from marker.converters.pdf import PdfConverter
