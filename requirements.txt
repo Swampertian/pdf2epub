@@ -108,7 +108,7 @@ markdown2==2.5.5
     # via marker-pdf
 markdownify==1.2.4
     # via marker-pdf
-marker-pdf==1.10.2
+marker-pdf==2.2.0
     # via pdf2epub
 markupsafe==3.0.4
     # via jinja2
