@@ -12,22 +12,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      # Unit tests and lint need neither marker nor torch, so only the dev
+      # group is installed. --locked fails if uv.lock is out of date.
+      - name: Install dev dependencies
+        run: uv sync --locked --only-group dev
 
       - name: Syntax check
-        run: python -m compileall -q main.py modules/
-
-      - name: Install ruff
-        run: pip install ruff
+        run: uv run --no-sync python -m compileall -q src/ bench/ tests/
 
       # E9/F: syntax errors and definite bugs (undefined names, unused
       # imports). Style rules are deliberately excluded.
       - name: Lint
-        run: ruff check --select E9,F .
+        run: uv run --no-sync ruff check --select E9,F .
+
+      - name: Unit tests
+        run: uv run --no-sync python -m pytest -q tests
+
+      - name: requirements.txt matches uv.lock
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt -q -o /tmp/requirements.txt
+          diff <(grep -v '^#' requirements.txt) <(grep -v '^#' /tmp/requirements.txt)

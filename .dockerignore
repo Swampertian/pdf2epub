@@ -2,6 +2,7 @@
 .github
 .gitignore
 .ruff_cache
+.pytest_cache
 __pycache__
 **/__pycache__
 docs
@@ -10,5 +11,13 @@ input
 !README.md
 venv
 .venv
+.worktree
+books
+bench
+tests
+scripts
+*.pdf
+*.epub
 Dockerfile
+docker
 .dockerignore
