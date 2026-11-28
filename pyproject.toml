@@ -11,7 +11,7 @@ dependencies = [
     "six==1.17.0",
     "markdown==3.11.3",
     "transformers==5.24.0",
-    "latex2mathml==3.81.0",
+    "latex2mathml==3.81.1",
     # imported directly by pdf2epub.html (also a marker dependency)
     "regex",
     # marker-pdf constrains Pillow<11.0.0
@@ -34,7 +34,7 @@ dev = [
     "pytest>=8",
     "ruff",
     "markdown==3.11.3",
-    "latex2mathml==3.81.0",
+    "latex2mathml==3.81.1",
     "regex",
     "pillow<11.0.0",
 ]
