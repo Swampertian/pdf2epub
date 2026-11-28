@@ -100,7 +100,7 @@ jiter==0.19.0
     #   openai
 joblib==1.6.0
     # via scikit-learn
-latex2mathml==3.81.0
+latex2mathml==3.81.1
     # via pdf2epub
 markdown==3.11.3
     # via pdf2epub
